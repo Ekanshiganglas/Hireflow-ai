@@ -2,10 +2,15 @@
 # This file extracts specific information from resume text
 
 import re
-import spacy
 
-# Load the English language model
-nlp = spacy.load("en_core_web_sm")
+# Make spaCy optional for deployment
+try:
+    import spacy
+    nlp = None  # Will load later if needed
+    SPACY_AVAILABLE = True
+except ImportError:
+    SPACY_AVAILABLE = False
+    nlp = None
 
 # List of common skills to look for in resumes
 SKILLS_LIST = [
@@ -111,7 +116,7 @@ def extract_skills(text):
 def extract_name(text):
     """
     Attempts to extract the person's name from the resume.
-    This is tricky! We'll use a simple approach.
+    Simple approach - takes first meaningful line (usually the name)
     
     Args:
         text: The resume text
@@ -119,13 +124,20 @@ def extract_name(text):
     Returns:
         Name as a string, or "Not found"
     """
-    # Process text with spaCy to find named entities
-    doc = nlp(text[:500])  # Only check first 500 characters (where name usually is)
+    # Simple approach: name is usually the first line
+    lines = text.strip().split('\n')
     
-    # Look for PERSON entities (spaCy identifies people's names)
-    for entity in doc.ents:
-        if entity.label_ == "PERSON":
-            return entity.text
+    if lines:
+        # Get first non-empty line that looks like a name
+        for line in lines[:5]:  # Check first 5 lines
+            line = line.strip()
+            # Name should be short, not have numbers, and not be empty
+            if line and len(line) < 50 and not any(char.isdigit() for char in line):
+                # Skip common resume section headers
+                skip_words = ['resume', 'curriculum', 'vitae', 'cv', 'profile', 'summary', 
+                             'objective', 'contact', 'email', 'phone', 'address']
+                if not any(skip in line.lower() for skip in skip_words):
+                    return line
     
     return "Not found"
 
@@ -188,3 +200,6 @@ if __name__ == "__main__":
     print("\n" + "="*50)
     print("✅ Extraction complete!")
     print("="*50)
+```
+
+---
